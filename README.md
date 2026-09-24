@@ -16,10 +16,10 @@ textdiffedit --help
 Homebrew が Python と `gh` を依存としてインストールします。
 
 ```bash
-python -m textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
+textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
   --replace 12:15 --expect old.md --with new.md
 
-python -m textdiffedit gh-issue-body https://github.com/OWNER/REPO/issues/456 \
+textdiffedit gh-issue-body https://github.com/OWNER/REPO/issues/456 \
   --replace 4:4 --expect old.md --with new.md
 ```
 

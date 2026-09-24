@@ -12,6 +12,7 @@ class Textdiffedit < Formula
       #!/bin/sh
       PYTHONPATH="#{libexec}${PYTHONPATH:+:$PYTHONPATH}" exec "#{Formula["python@3.11"].opt_bin}/python3.11" -m textdiffedit "$@"
     SH
+    (bin/"textdiffedit").chmod 0755
   end
 
   test do

@@ -1,6 +1,9 @@
 class Textdiffedit < Formula
   desc "Review line edits before updating GitHub PR and issue bodies"
   homepage "https://github.com/s4na/textdiffedit"
+  url "https://github.com/s4na/textdiffedit/archive/fba318cf114b5da9a8ff61eb4aa8e289826d1029.tar.gz"
+  version "0.1.1"
+  sha256 "a4763519033ff4afa3c40b0cf11dc20bfa8737b2168b33a6879109e736023f9a"
   head "https://github.com/s4na/textdiffedit.git", branch: "main"
 
   depends_on "gh"

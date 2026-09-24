@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from textdiffedit.cli import EditError, GitHubBody, replace_lines
+from textdiffedit.cli import EditError, GitHubBody, render_diff, replace_lines
 
 
 class ReplaceTests(unittest.TestCase):
@@ -19,6 +19,10 @@ class ReplaceTests(unittest.TestCase):
     def test_accepts_last_line_without_newline(self):
         self.assertEqual(replace_lines("a\nb", "2:2", "b", "B"), "a\nB")
 
+    def test_diff_marks_missing_final_newline(self):
+        diff = render_diff("a\nold", "a\nnew")
+        self.assertIn("-old\n\\ No newline at end of file\n+new", diff)
+
     def test_provider_kind_must_match_url(self):
         with self.assertRaises(EditError):
             GitHubBody("gh-issue-body", "https://github.com/a/b/pull/1")
@@ -29,6 +33,8 @@ class ReplaceTests(unittest.TestCase):
         provider = GitHubBody("gh-pr-body", "https://github.com/a/b/pull/1")
         self.assertEqual(provider.fetch(), "a")
         provider.update("new\nbody")
+        self.assertIn("github.com", run.call_args.args[0])
+        self.assertEqual(run.call_args.kwargs["encoding"], "utf-8")
         self.assertEqual(run.call_args.kwargs["input"], '{"body": "new\\nbody"}')
 
 

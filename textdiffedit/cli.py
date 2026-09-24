@@ -28,7 +28,8 @@ class GitHubBody:
     def request(self, *args, input_text=None):
         try:
             result = subprocess.run(
-                ["gh", "api", self.path, *args], input=input_text, text=True,
+                ["gh", "api", "--hostname", "github.com", self.path, *args], input=input_text, text=True,
+                encoding="utf-8",
                 capture_output=True, check=True,
             )
             return json.loads(result.stdout)
@@ -63,6 +64,15 @@ def replace_lines(original, range_spec, expected, replacement):
     return "".join(lines[:start - 1]) + replacement + "".join(lines[end:])
 
 
+def render_diff(before, after):
+    records = difflib.unified_diff(
+        before.splitlines(keepends=True), after.splitlines(keepends=True),
+        fromfile="before", tofile="after",
+    )
+    return "".join(line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
+                   for line in records)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Review a line edit before updating remote text")
     parser.add_argument("provider", choices=("gh-pr-body", "gh-issue-body"))
@@ -75,13 +85,12 @@ def main(argv=None):
     try:
         provider = GitHubBody(args.provider, args.url)
         original = provider.fetch()
-        updated = replace_lines(original, args.replace, args.expect.read_text(), args.replacement.read_text())
+        updated = replace_lines(original, args.replace, args.expect.read_text(encoding="utf-8"),
+                                args.replacement.read_text(encoding="utf-8"))
         if updated == original:
             print("No changes")
             return 0
-        diff = difflib.unified_diff(original.splitlines(keepends=True), updated.splitlines(keepends=True),
-                                    fromfile="before", tofile="after")
-        sys.stdout.writelines(diff)
+        sys.stdout.write(render_diff(original, updated))
         sys.stdout.flush()
         if not args.yes and input("Apply this change? [y/N] ").strip().lower() != "y":
             return 1

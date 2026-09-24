@@ -4,17 +4,21 @@
 
 ## Homebrew でインストール
 
-PR マージ後に最初のリリースが公開されたら、次の一行でインストールできます。
+このリポジトリを非公式 tap として使います。初回は次の一行で tap の登録とインストールを行います（初回マージ後の Formula 更新完了が必要です）。
 
 ```bash
-brew install s4na/try-s4na-tap/textdiffedit
+brew tap s4na/textdiffedit https://github.com/s4na/textdiffedit.git && brew install s4na/textdiffedit/textdiffedit
 gh auth login
 textdiffedit --help
 ```
 
 Homebrew が Python と `gh` を依存としてインストールします。
 
-公開ワークフローには、`s4na/homebrew-try-s4na-tap` の Contents 書き込み権限を持つ fine-grained token を、このリポジトリの Actions secret `HOMEBREW_TAP_TOKEN` に登録してください。main へのマージ後にテスト、GitHub Release 作成、tap Formula 更新を順に実行します。
+tap 登録後は `brew install s4na/textdiffedit/textdiffedit` でインストールできます。更新は `brew update && brew upgrade s4na/textdiffedit/textdiffedit` です。
+
+リポジトリ名が `homebrew-` で始まらないため、初回の `brew tap` にはURL指定が必要です。
+
+## 使い方
 
 ```bash
 textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
@@ -41,3 +45,11 @@ python -W error -m unittest discover -s tests
 ```
 
 GitHub Actions で PR と main への push ごとに同じ lint・テストを実行します。
+
+## Formula の自動更新
+
+main に PR がマージされたときだけ、GHA がマージコミットのアーカイブを取得し、そのURL・バージョン・SHA-256を `Formula/textdiffedit.rb` に書き込んで main にコミットします。単なるPRのcloseやmainへの直接pushでは更新しません。アーカイブはFormula更新コミットではなくマージコミットを参照するため、ハッシュの自己参照を避けられます。
+
+標準の `GITHUB_TOKEN` の `contents: write` を使用します。別リポジトリ・追加secret・GitHub Releaseは不要です。mainへのbotのpushを禁止するブランチ保護がある場合は、この更新も拒否されます。
+
+新しいマージでmainが進んでいる場合や、更新済みのマージを再実行した場合はスキップします。バージョンはこのワークフローの実行番号を使った `0.1.<run_number>` です。

@@ -48,8 +48,8 @@ GitHub Actions で PR と main への push ごとに同じ lint・テストを�
 
 ## Formula の自動更新
 
-main に PR がマージされたときだけ、GHA がマージコミットのアーカイブを取得し、そのURL・バージョン・SHA-256を `Formula/textdiffedit.rb` に書き込んで main にコミットします。単なるPRのcloseやmainへの直接pushでは更新しません。アーカイブはFormula更新コミットではなくマージコミットを参照するため、ハッシュの自己参照を避けられます。
+main へのpush時に、そのコミットがmainにマージ済みのPRのマージコミットと一致するかを確認します。一致したときだけGHAがアーカイブを取得し、そのURL・バージョン・SHA-256を `Formula/textdiffedit.rb` に書き込んで main にコミットします。単なるPRのcloseや通常の直接pushでは更新しません。アーカイブはFormula更新コミットではなくマージコミットを参照するため、ハッシュの自己参照を避けられます。
 
-標準の `GITHUB_TOKEN` の `contents: write` を使用します。別リポジトリ・追加secret・GitHub Releaseは不要です。mainへのbotのpushを禁止するブランチ保護がある場合は、この更新も拒否されます。
+標準の `GITHUB_TOKEN` の `contents: write` と `pull-requests: read` を使用します。別リポジトリ・追加secret・GitHub Releaseは不要です。mainへのbotのpushを禁止するブランチ保護がある場合は、この更新も拒否されます。
 
 新しいマージでmainが進んでいる場合や、更新済みのマージを再実行した場合はスキップします。バージョンはこのワークフローの実行番号を使った `0.1.<run_number>` です。

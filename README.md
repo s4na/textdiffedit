@@ -2,6 +2,19 @@
 
 取得したテキストの指定行を置換し、差分を確認してから更新する CLI。最初の provider は GitHub の PR 本文と Issue 本文です。Python 3.10 以降と、認証済みの `gh` が必要です。
 
+## Homebrew でインストール
+
+リリースタグがまだないため、現時点では `main` の最新版をインストールします。
+
+```bash
+git clone https://github.com/s4na/textdiffedit.git
+brew install --HEAD ./textdiffedit/Formula/textdiffedit.rb
+gh auth login
+textdiffedit --help
+```
+
+Homebrew が Python と `gh` を依存としてインストールします。
+
 ```bash
 python -m textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
   --replace 12:15 --expect old.md --with new.md

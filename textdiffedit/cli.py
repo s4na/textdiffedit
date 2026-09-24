@@ -85,8 +85,8 @@ def main(argv=None):
     try:
         provider = GitHubBody(args.provider, args.url)
         original = provider.fetch()
-        updated = replace_lines(original, args.replace, args.expect.read_text(encoding="utf-8"),
-                                args.replacement.read_text(encoding="utf-8"))
+        updated = replace_lines(original, args.replace, args.expect.read_bytes().decode("utf-8"),
+                                args.replacement.read_bytes().decode("utf-8"))
         if updated == original:
             print("No changes")
             return 0
@@ -99,6 +99,6 @@ def main(argv=None):
         provider.update(updated)
         print("Updated")
         return 0
-    except (EditError, OSError, EOFError) as exc:
+    except (EditError, OSError, EOFError, UnicodeError) as exc:
         print(f"textdiffedit: {exc}", file=sys.stderr)
         return 1

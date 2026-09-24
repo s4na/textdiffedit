@@ -17,3 +17,13 @@ python -m textdiffedit gh-issue-body https://github.com/OWNER/REPO/issues/456 \
 ```bash
 python -m unittest discover -s tests
 ```
+
+## 開発時の検証
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m ruff check .
+python -W error -m unittest discover -s tests
+```
+
+GitHub Actions で PR と main への push ごとに同じ lint・テストを実行します。

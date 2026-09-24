@@ -1,7 +1,11 @@
+import io
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
-from textdiffedit.cli import EditError, GitHubBody, render_diff, replace_lines
+from textdiffedit.cli import EditError, GitHubBody, main, render_diff, replace_lines
 
 
 class ReplaceTests(unittest.TestCase):
@@ -36,6 +40,46 @@ class ReplaceTests(unittest.TestCase):
         self.assertIn("github.com", run.call_args.args[0])
         self.assertEqual(run.call_args.kwargs["encoding"], "utf-8")
         self.assertEqual(run.call_args.kwargs["input"], '{"body": "new\\nbody"}')
+
+
+class CommandTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name)
+        self.old = root / "old.md"
+        self.new = root / "new.md"
+        self.old.write_bytes("旧文\r\n".encode("utf-8"))
+        self.new.write_bytes("新文\r\n".encode("utf-8"))
+        self.args = ["gh-issue-body", "https://github.com/a/b/issues/1",
+                     "--replace", "1:1", "--expect", str(self.old), "--with", str(self.new)]
+
+    @patch("textdiffedit.cli.GitHubBody")
+    def test_preserves_crlf_and_unicode(self, factory):
+        provider = factory.return_value
+        provider.fetch.return_value = "旧文\r\nそのまま\r\n"
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(main(self.args + ["--yes"]), 0)
+        provider.update.assert_called_once_with("新文\r\nそのまま\r\n")
+
+    @patch("textdiffedit.cli.GitHubBody")
+    @patch("builtins.input", return_value="n")
+    def test_declining_does_not_update(self, prompt, factory):
+        provider = factory.return_value
+        provider.fetch.return_value = "旧文\r\n"
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(main(self.args), 1)
+        provider.update.assert_not_called()
+
+    @patch("textdiffedit.cli.GitHubBody")
+    @patch("sys.stderr", new_callable=io.StringIO)
+    def test_concurrent_change_does_not_update(self, stderr, factory):
+        provider = factory.return_value
+        provider.fetch.side_effect = ["旧文\r\n", "他者の編集\r\n"]
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(main(self.args + ["--yes"]), 1)
+        self.assertIn("Remote text changed", stderr.getvalue())
+        provider.update.assert_not_called()
 
 
 if __name__ == "__main__":

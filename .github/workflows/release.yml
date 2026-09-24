@@ -1,0 +1,57 @@
+name: Update Homebrew Formula
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-formula
+  cancel-in-progress: false
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      # Only trusted main is executed; never check out the PR head.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.10'
+      - name: Write the merged source URL and checksum
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$SOURCE_SHA" ]; then
+            echo "main has advanced or this merge has already been published; skipping."
+            exit 0
+          fi
+          MERGED_PR=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" \
+            --jq ".[] | select(.merged_at != null and .base.ref == \"main\" and .merge_commit_sha == \"$SOURCE_SHA\") | .number")
+          if [ -z "$MERGED_PR" ]; then
+            echo "This commit is not a merged PR; skipping."
+            exit 0
+          fi
+          python -m pip install -r requirements-dev.txt
+          python -m ruff check .
+          python -W error -m unittest discover -s tests
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/source.tar.gz" \
+            "https://github.com/s4na/textdiffedit/archive/$SOURCE_SHA.tar.gz"
+          python scripts/update_homebrew.py "$SOURCE_SHA" "0.1.$GITHUB_RUN_NUMBER" "$RUNNER_TEMP/source.tar.gz"
+          git diff --exit-code --quiet -- Formula/textdiffedit.rb && exit 0
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Formula/textdiffedit.rb
+          git commit -m "Homebrew Formula を更新 ($SOURCE_SHA)"
+          # A normal push rejects a race with another main update; never force it.
+          git push origin HEAD:main

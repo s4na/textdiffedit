@@ -2,11 +2,29 @@
 
 取得したテキストの指定行を置換し、差分を確認してから更新する CLI。最初の provider は GitHub の PR 本文と Issue 本文です。Python 3.10 以降と、認証済みの `gh` が必要です。
 
+## Homebrew でインストール
+
+このリポジトリを非公式 tap として使います。初回は次の一行で tap の登録とインストールを行います（初回マージ後の Formula 更新完了が必要です）。
+
 ```bash
-python -m textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
+brew tap s4na/textdiffedit https://github.com/s4na/textdiffedit.git && brew install s4na/textdiffedit/textdiffedit
+gh auth login
+textdiffedit --help
+```
+
+Homebrew が Python と `gh` を依存としてインストールします。
+
+tap 登録後は `brew install s4na/textdiffedit/textdiffedit` でインストールできます。更新は `brew update && brew upgrade s4na/textdiffedit/textdiffedit` です。
+
+リポジトリ名が `homebrew-` で始まらないため、初回の `brew tap` にはURL指定が必要です。
+
+## 使い方
+
+```bash
+textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \
   --replace 12:15 --expect old.md --with new.md
 
-python -m textdiffedit gh-issue-body https://github.com/OWNER/REPO/issues/456 \
+textdiffedit gh-issue-body https://github.com/OWNER/REPO/issues/456 \
   --replace 4:4 --expect old.md --with new.md
 ```
 
@@ -27,3 +45,11 @@ python -W error -m unittest discover -s tests
 ```
 
 GitHub Actions で PR と main への push ごとに同じ lint・テストを実行します。
+
+## Formula の自動更新
+
+main へのpush時に、そのコミットがmainにマージ済みのPRのマージコミットと一致するかを確認します。一致したときだけGHAがアーカイブを取得し、そのURL・バージョン・SHA-256を `Formula/textdiffedit.rb` に書き込んで main にコミットします。単なるPRのcloseや通常の直接pushでは更新しません。アーカイブはFormula更新コミットではなくマージコミットを参照するため、ハッシュの自己参照を避けられます。
+
+標準の `GITHUB_TOKEN` の `contents: write` と `pull-requests: read` を使用します。別リポジトリ・追加secret・GitHub Releaseは不要です。mainへのbotのpushを禁止するブランチ保護がある場合は、この更新も拒否されます。
+
+新しいマージでmainが進んでいる場合や、更新済みのマージを再実行した場合はスキップします。バージョンはこのワークフローの実行番号を使った `0.1.<run_number>` です。

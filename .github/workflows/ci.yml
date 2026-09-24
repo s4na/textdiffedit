@@ -25,3 +25,28 @@ jobs:
         run: python -m ruff check .
       - name: Test
         run: python -W error -m unittest discover -s tests
+
+  homebrew:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.10'
+      - name: Prepare the Formula for this commit
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/source.tar.gz" \
+            "https://github.com/s4na/textdiffedit/archive/$SOURCE_SHA.tar.gz"
+          python scripts/update_homebrew.py "$SOURCE_SHA" "0.1.$GITHUB_RUN_NUMBER" "$RUNNER_TEMP/source.tar.gz"
+      - name: Install and test through a local tap
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          brew tap s4na/textdiffedit "$GITHUB_WORKSPACE"
+          cp Formula/textdiffedit.rb "$(brew --repository s4na/textdiffedit)/Formula/textdiffedit.rb"
+          brew install --build-from-source s4na/textdiffedit/textdiffedit
+          brew test s4na/textdiffedit/textdiffedit

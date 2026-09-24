@@ -4,16 +4,17 @@
 
 ## Homebrew でインストール
 
-リリースタグがまだないため、現時点では `main` の最新版をインストールします。
+PR マージ後に最初のリリースが公開されたら、次の一行でインストールできます。
 
 ```bash
-git clone https://github.com/s4na/textdiffedit.git
-brew install --HEAD ./textdiffedit/Formula/textdiffedit.rb
+brew install s4na/try-s4na-tap/textdiffedit
 gh auth login
 textdiffedit --help
 ```
 
 Homebrew が Python と `gh` を依存としてインストールします。
+
+公開ワークフローには、`s4na/homebrew-try-s4na-tap` の Contents 書き込み権限を持つ fine-grained token を、このリポジトリの Actions secret `HOMEBREW_TAP_TOKEN` に登録してください。main へのマージ後にテスト、GitHub Release 作成、tap Formula 更新を順に実行します。
 
 ```bash
 textdiffedit gh-pr-body https://github.com/OWNER/REPO/pull/123 \

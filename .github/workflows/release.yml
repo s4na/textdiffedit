@@ -1,0 +1,66 @@
+name: Release to Homebrew
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.10'
+      - run: python -W error -m unittest discover -s tests
+      - name: Require tap token before publishing
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: test -n "$TAP_TOKEN"
+      - name: Create release and calculate source checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v0.1.${{ github.run_number }}
+        run: |
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+          curl --fail --location --retry 3 --output source.tar.gz \
+            "https://github.com/s4na/textdiffedit/archive/refs/tags/$TAG.tar.gz"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: s4na/homebrew-try-s4na-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+          persist-credentials: true
+      - name: Update tap Formula
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          formula = Path('tap/Formula/textdiffedit.rb')
+          text = formula.read_text()
+          marker = '  head "https://github.com/s4na/textdiffedit.git", branch: "main"'
+          stable = (
+              f'  url "https://github.com/s4na/textdiffedit/archive/refs/tags/{os.environ["TAG"]}.tar.gz"\n'
+              f'  sha256 "{os.environ["SHA256"]}"\n'
+          )
+          import re
+          text = re.sub(r'  url "https://github.com/s4na/textdiffedit/archive/refs/tags/[^\n]+\n  sha256 "[a-f0-9]{64}"\n', '', text)
+          if text.count(marker) != 1:
+              raise SystemExit('Unexpected tap Formula')
+          formula.write_text(text.replace(marker, stable + marker))
+          PY
+          git -C tap config user.name github-actions[bot]
+          git -C tap config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C tap add Formula/textdiffedit.rb
+          git -C tap commit -m "Update textdiffedit to $TAG"
+          git -C tap push
